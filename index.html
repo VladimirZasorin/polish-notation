@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <form method="POST" action="" enctype="multipart/form-data">
+        Ввод: <input type="text" name="math" value="(1 + 2) * 4 + 3">
+    </form>
+    <div>Польская нотация: <span class="polish-notation"></span></div>
+    <div>Результат: <span class="result"></span></div>
+</body>
+<script>
+    'use strict'
+    const arNumbers = [
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+    ]
+    const arStaples = [
+        '(',
+        ')',
+    ]
+    const arOperators = [
+        '-',
+        '+',
+        '*',
+        '/',
+    ]
+    function setError(text) {
+        alert(text)
+        return true;
+    }
+    function pushSymbols(arStack, lastIndex, arPolishNotation) {
+        for (let i = arStack.length - 1; i > lastIndex; i--) {
+            arPolishNotation.push(arStack.pop())
+        }
+        return arPolishNotation
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector('[name=math]').addEventListener('input', function(e) {
+            let isError = false
+            let arStack = []
+            let arPolishNotation = []
+            const str = e.target.value
+            const regExpNotValid = /(?:(?![0-9]+|\(|\)|\+|\/|\*|\-))./g
+            const notValid = str.match(regExpNotValid)
+            const strNotValid = (notValid !== null) ? notValid.join('').trim() : []
+            if (strNotValid.length > 0) {
+                isError = setError('Присутствуют некорректные символы: ' + strNotValid)
+            }
+            if (!isError) {
+                const regExp = /[0-9]+|\(|\)|\+|\/|\*|\-/g
+                const arStr = str.match(regExp)
+                let strLength = arStr.length
+                if (strLength > 0) {
+                    if (arStr[0] === ')' || arStr[0] === '*' || arStr[0] === '/') {
+                        isError = setError('Выражение не может начинаться с символов: ) * /')
+                    }
+                    if (arStr.length < 3) {
+                        isError = setError('Слишком короткое выражение, невозможно сосчитать ответ')
+                    }
+                    for (let i = 0; i < strLength; i++) {
+                        if (isError) break
+                        const strItem = arStr[i]
+                        const nextItem = (i + 1 < strLength) ? arStr[i + 1] : undefined
+                        
+                        if (arNumbers.indexOf(strItem) !== -1) {
+                            arPolishNotation.push(strItem)
+                            if ((nextItem !== undefined && (nextItem === '-' || nextItem === '+'))) {                    
+                                const lastIndex = arStack.lastIndexOf('(')
+                                if (arStack.length - 1 > lastIndex) {
+                                    arPolishNotation = pushSymbols(arStack, lastIndex, arPolishNotation)
+                                }
+                            }
+                            continue
+                        }
+                        if (strItem === '(') {
+                            arStack.push(strItem)
+                            continue
+                        }
+                        if (strItem === ')') {
+                            let lastIndex = arStack.lastIndexOf('(')
+                            if (lastIndex !== -1) {
+                                if (arStack.length - 1 > lastIndex) {
+                                    arPolishNotation = pushSymbols(arStack, lastIndex, arPolishNotation)
+                                }
+                                arStack.pop()
+                                lastIndex = arStack.lastIndexOf('(')
+                                if (arStack.length - 1 > lastIndex) {
+                                    arPolishNotation = pushSymbols(arStack, lastIndex, arPolishNotation)
+                                }
+                                continue
+                            } else {
+                                isError = setError('Некорректное выражение')
+                            }
+                        }
+                        if (arOperators.indexOf(strItem) !== -1) {
+                            arStack.push(strItem)
+                            continue
+                        }
+                    }
+                    if (arStack.length > 0 && !isError) {
+                            arPolishNotation = pushSymbols(arStack, -1, arPolishNotation)
+                        for (let i = arStack.length - 1; i > -1; i--) {
+                            switch (arStack[i]) {
+                                case '(':
+                                    isError = setError('Некорректное выражение')
+                                default:
+                                    arPolishNotation.push(arStack.pop())
+                            }
+                        }
+                    }
+                }
+            }
+            if (arStack.length > 0 || arPolishNotation.length < 1 || isNaN(parseInt(arPolishNotation[0]))) {
+                isError = setError('Некорректное выражение')
+            }
+            if (!isError) {
+                document.querySelector('.polish-notation').innerText = arPolishNotation.join('')
+                let arResultStack = []
+                const polishNotationLastIndex = arPolishNotation.length
+                for (let i = 0; i < polishNotationLastIndex; i++) {
+                    const element = arPolishNotation[i];
+                    if (arOperators.indexOf(element) === -1) {
+                        arResultStack.push(parseFloat(element))
+                    } else {
+                        const resultStackLastIndex = arResultStack.length - 1
+                        if (resultStackLastIndex < 1) {
+                            isError = setError('Некорректное выражение. Не возможно получить ответ.')
+                            break
+                        } else {
+                            const secondItem = arResultStack.pop()
+                            const firstItem = arResultStack.pop()
+                            let result = 0
+                            switch (element) {
+                                case '/':
+                                    result = firstItem / secondItem
+                                    break
+                                case '*':
+                                    result = firstItem * secondItem
+                                    break
+                                case '+':
+                                    result = firstItem + secondItem
+                                    break
+                                case '-':
+                                    result = firstItem - secondItem
+                                    break
+                            }
+                            arResultStack.push(result)
+                        }
+                    }
+                }
+                if (arResultStack.length !== 1) {
+                    isError = setError('Некорректное выражение. Не возможно получить ответ.')
+                } else {
+                    document.querySelector('.result').innerText = arResultStack[0]
+                }
+            }
+        })
+    })
+</script>
+</html>
