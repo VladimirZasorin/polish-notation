@@ -16,21 +16,6 @@
 </body>
 <script>
     'use strict'
-    const arNumbers = [
-        '1',
-        '2',
-        '3',
-        '4',
-        '5',
-        '6',
-        '7',
-        '8',
-        '9',
-    ]
-    const arStaples = [
-        '(',
-        ')',
-    ]
     const arOperators = [
         '-',
         '+',
@@ -74,10 +59,10 @@
                         if (isError) break
                         const strItem = arStr[i]
                         const nextItem = (i + 1 < strLength) ? arStr[i + 1] : undefined
-                        
-                        if (arNumbers.indexOf(strItem) !== -1) {
+
+                        if (!isNaN(parseInt(strItem))) {
                             arPolishNotation.push(strItem)
-                            if ((nextItem !== undefined && (nextItem === '-' || nextItem === '+'))) {                    
+                            if ((nextItem !== undefined && (nextItem === '-' || nextItem === '+'))) {
                                 const lastIndex = arStack.lastIndexOf('(')
                                 if (arStack.length - 1 > lastIndex) {
                                     arPolishNotation = pushSymbols(arStack, lastIndex, arPolishNotation)
@@ -136,9 +121,21 @@
                         arResultStack.push(parseFloat(element))
                     } else {
                         const resultStackLastIndex = arResultStack.length - 1
-                        if (resultStackLastIndex < 1) {
+                        if (resultStackLastIndex < 0) {
                             isError = setError('Некорректное выражение. Не возможно получить ответ.')
                             break
+                        } else if (resultStackLastIndex === 0) {
+                            const item = arResultStack.pop()
+                            let result = 0
+                            switch (element) {
+                                case '+':
+                                    result = + item
+                                    break
+                                case '-':
+                                    result = - item
+                                    break
+                            }
+                            arResultStack.push(result)
                         } else {
                             const secondItem = arResultStack.pop()
                             const firstItem = arResultStack.pop()
