@@ -16,33 +16,26 @@
 </body>
 <script>
     'use strict'
-    const arOperators = [
-        '-',
-        '+',
-        '*',
-        '/',
-    ]
-    function setError(text) {
-        alert(text)
-        return true;
-    }
-    function pushSymbols(arStack, lastIndex, arPolishNotation) {
-        for (let i = arStack.length - 1; i > lastIndex; i--) {
-            arPolishNotation.push(arStack.pop())
+    class Calculator {
+        constructor() {
+            this.arOperators = [
+                '-',
+                '+',
+                '*',
+                '/',
+            ]
         }
-        return arPolishNotation
-    }
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelector('[name=math]').addEventListener('input', function(e) {
+
+        init(str) {
             let isError = false
             let arStack = []
             let arPolishNotation = []
-            const str = e.target.value
+
             const regExpNotValid = /(?:(?![0-9]+|\(|\)|\+|\/|\*|\-))./g
             const notValid = str.match(regExpNotValid)
             const strNotValid = (notValid !== null) ? notValid.join('').trim() : []
             if (strNotValid.length > 0) {
-                isError = setError('Присутствуют некорректные символы: ' + strNotValid)
+                isError = this.setError('Присутствуют некорректные символы: ' + strNotValid)
             }
             if (!isError) {
                 const regExp = /[0-9]+|\(|\)|\+|\/|\*|\-/g
@@ -50,10 +43,10 @@
                 let strLength = arStr.length
                 if (strLength > 0) {
                     if (arStr[0] === ')' || arStr[0] === '*' || arStr[0] === '/') {
-                        isError = setError('Выражение не может начинаться с символов: ) * /')
+                        isError = this.setError('Выражение не может начинаться с символов: ) * /')
                     }
                     if (arStr.length < 3) {
-                        isError = setError('Слишком короткое выражение, невозможно сосчитать ответ')
+                        isError = this.setError('Слишком короткое выражение, невозможно сосчитать ответ')
                     }
                     for (let i = 0; i < strLength; i++) {
                         if (isError) break
@@ -65,7 +58,7 @@
                             if ((nextItem !== undefined && (nextItem === '-' || nextItem === '+'))) {
                                 const lastIndex = arStack.lastIndexOf('(')
                                 if (arStack.length - 1 > lastIndex) {
-                                    arPolishNotation = pushSymbols(arStack, lastIndex, arPolishNotation)
+                                    arPolishNotation = this.pushSymbols(arStack, lastIndex, arPolishNotation)
                                 }
                             }
                             continue
@@ -78,29 +71,29 @@
                             let lastIndex = arStack.lastIndexOf('(')
                             if (lastIndex !== -1) {
                                 if (arStack.length - 1 > lastIndex) {
-                                    arPolishNotation = pushSymbols(arStack, lastIndex, arPolishNotation)
+                                    arPolishNotation = this.pushSymbols(arStack, lastIndex, arPolishNotation)
                                 }
                                 arStack.pop()
                                 lastIndex = arStack.lastIndexOf('(')
                                 if (arStack.length - 1 > lastIndex) {
-                                    arPolishNotation = pushSymbols(arStack, lastIndex, arPolishNotation)
+                                    arPolishNotation = this.pushSymbols(arStack, lastIndex, arPolishNotation)
                                 }
                                 continue
                             } else {
-                                isError = setError('Некорректное выражение')
+                                isError = this.setError('Некорректное выражение')
                             }
                         }
-                        if (arOperators.indexOf(strItem) !== -1) {
+                        if (this.arOperators.indexOf(strItem) !== -1) {
                             arStack.push(strItem)
                             continue
                         }
                     }
                     if (arStack.length > 0 && !isError) {
-                            arPolishNotation = pushSymbols(arStack, -1, arPolishNotation)
+                        arPolishNotation = this.pushSymbols(arStack, -1, arPolishNotation)
                         for (let i = arStack.length - 1; i > -1; i--) {
                             switch (arStack[i]) {
                                 case '(':
-                                    isError = setError('Некорректное выражение')
+                                    isError = this.setError('Некорректное выражение')
                                 default:
                                     arPolishNotation.push(arStack.pop())
                             }
@@ -109,7 +102,7 @@
                 }
             }
             if (arStack.length > 0 || arPolishNotation.length < 1 || isNaN(parseInt(arPolishNotation[0]))) {
-                isError = setError('Некорректное выражение')
+                isError = this.setError('Некорректное выражение')
             }
             if (!isError) {
                 document.querySelector('.polish-notation').innerText = arPolishNotation.join('')
@@ -117,12 +110,12 @@
                 const polishNotationLastIndex = arPolishNotation.length
                 for (let i = 0; i < polishNotationLastIndex; i++) {
                     const element = arPolishNotation[i];
-                    if (arOperators.indexOf(element) === -1) {
+                    if (this.arOperators.indexOf(element) === -1) {
                         arResultStack.push(parseFloat(element))
                     } else {
                         const resultStackLastIndex = arResultStack.length - 1
                         if (resultStackLastIndex < 0) {
-                            isError = setError('Некорректное выражение. Не возможно получить ответ.')
+                            isError = this.setError('Некорректное выражение. Не возможно получить ответ.')
                             break
                         } else if (resultStackLastIndex === 0) {
                             const item = arResultStack.pop()
@@ -159,11 +152,30 @@
                     }
                 }
                 if (arResultStack.length !== 1) {
-                    isError = setError('Некорректное выражение. Не возможно получить ответ.')
+                    isError = this.setError('Некорректное выражение. Не возможно получить ответ.')
                 } else {
                     document.querySelector('.result').innerText = arResultStack[0]
                 }
             }
+        }
+
+        setError() {
+            alert(text)
+            return true;
+        }
+
+        pushSymbols(arStack, lastIndex, arPolishNotation) {
+            for (let i = arStack.length - 1; i > lastIndex; i--) {
+                arPolishNotation.push(arStack.pop())
+            }
+            return arPolishNotation
+        }
+    }
+    const calculator = new Calculator()
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector('[name=math]').addEventListener('input', function(e) {
+            const value = e.target.value
+            calculator.init(value)
         })
     })
 </script>
