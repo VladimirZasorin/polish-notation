@@ -17,162 +17,271 @@
 <script>
     'use strict'
     class Calculator {
-        constructor() {
+        constructor(polishNotationElementSelector, resultElementSelector) {
             this.arOperators = [
                 '-',
                 '+',
                 '*',
                 '/',
             ]
+            this.arErrorsList = {
+                incorrectSymbols: 'Присутствуют некорректные символы: ',
+                invalidBeginningExpression: 'Выражение не может начинаться с символов: ) * /',
+                tooShortExpression: 'Слишком короткое выражение, невозможно сосчитать ответ',
+                incorrectExpression: 'Некорректное выражение.',
+                notPossibleToGetAnAnswer: 'Некорректное выражение. Не возможно получить ответ.',
+            }
+            this.polishNotationElement = document.querySelector(polishNotationElementSelector)
+            this.resultElement = document.querySelector(resultElementSelector)
+            this.isError = false
+            this.arStack = []
+            this.arResultStack = []
+            this.arPolishNotation = []
+            this.regExpNotValid = /(?:(?![0-9]+|\(|\)|\+|\/|\*|\-))./g
+            this.regExp = /[0-9]+|\(|\)|\+|\/|\*|\-/g
         }
 
+        /**
+         * Запуск калькулятора, на основе введённой строки
+         * @param str
+         */
         init(str) {
-            let isError = false
-            let arStack = []
-            let arPolishNotation = []
+            this.getPolishNotationStack(str)
+            this.getResultValue()
+        }
 
-            const regExpNotValid = /(?:(?![0-9]+|\(|\)|\+|\/|\*|\-))./g
-            const notValid = str.match(regExpNotValid)
+        /**
+         * Унарный плюс или минус, если в стэке остался соответствующий оператор
+         * @param element
+         */
+        unaryPlusOrMinus(element) {
+            const item = this.arResultStack.pop()
+            let result = 0
+            switch (element) {
+                case '+':
+                    result = + item
+                    break
+                case '-':
+                    result = - item
+                    break
+            }
+            this.arResultStack.push(result)
+        }
+
+        /**
+         * Операция над последними значениями из стэка при подсчёте результата
+         * @param element
+         */
+        operationOnSymbolsFromStack(element) {
+            const secondItem = this.arResultStack.pop()
+            const firstItem = this.arResultStack.pop()
+            let result = 0
+            switch (element) {
+                case '/':
+                    result = firstItem / secondItem
+                    break
+                case '*':
+                    result = firstItem * secondItem
+                    break
+                case '+':
+                    result = firstItem + secondItem
+                    break
+                case '-':
+                    result = firstItem - secondItem
+                    break
+            }
+            this.arResultStack.push(result)
+        }
+
+        /**
+         * Получение массива польской нотации
+         * @param str
+         */
+        getPolishNotationStack(str) {
+            const notValid = str.match(this.regExpNotValid)
             const strNotValid = (notValid !== null) ? notValid.join('').trim() : []
             if (strNotValid.length > 0) {
-                isError = this.setError('Присутствуют некорректные символы: ' + strNotValid)
+                this.isError = this.setError(this.arErrorsList.incorrectSymbols + strNotValid)
             }
-            if (!isError) {
-                const regExp = /[0-9]+|\(|\)|\+|\/|\*|\-/g
-                const arStr = str.match(regExp)
+            if (!this.isError) {
+                const arStr = str.match(this.regExp)
                 let strLength = arStr.length
                 if (strLength > 0) {
-                    if (arStr[0] === ')' || arStr[0] === '*' || arStr[0] === '/') {
-                        isError = this.setError('Выражение не может начинаться с символов: ) * /')
-                    }
-                    if (arStr.length < 3) {
-                        isError = this.setError('Слишком короткое выражение, невозможно сосчитать ответ')
-                    }
-                    for (let i = 0; i < strLength; i++) {
-                        if (isError) break
-                        const strItem = arStr[i]
-                        const nextItem = (i + 1 < strLength) ? arStr[i + 1] : undefined
-
-                        if (!isNaN(parseInt(strItem))) {
-                            arPolishNotation.push(strItem)
-                            if ((nextItem !== undefined && (nextItem === '-' || nextItem === '+'))) {
-                                const lastIndex = arStack.lastIndexOf('(')
-                                if (arStack.length - 1 > lastIndex) {
-                                    arPolishNotation = this.pushSymbols(arStack, lastIndex, arPolishNotation)
-                                }
-                            }
-                            continue
-                        }
-                        if (strItem === '(') {
-                            arStack.push(strItem)
-                            continue
-                        }
-                        if (strItem === ')') {
-                            let lastIndex = arStack.lastIndexOf('(')
-                            if (lastIndex !== -1) {
-                                if (arStack.length - 1 > lastIndex) {
-                                    arPolishNotation = this.pushSymbols(arStack, lastIndex, arPolishNotation)
-                                }
-                                arStack.pop()
-                                lastIndex = arStack.lastIndexOf('(')
-                                if (arStack.length - 1 > lastIndex) {
-                                    arPolishNotation = this.pushSymbols(arStack, lastIndex, arPolishNotation)
-                                }
-                                continue
-                            } else {
-                                isError = this.setError('Некорректное выражение')
-                            }
-                        }
-                        if (this.arOperators.indexOf(strItem) !== -1) {
-                            arStack.push(strItem)
-                            continue
-                        }
-                    }
-                    if (arStack.length > 0 && !isError) {
-                        arPolishNotation = this.pushSymbols(arStack, -1, arPolishNotation)
-                        for (let i = arStack.length - 1; i > -1; i--) {
-                            switch (arStack[i]) {
-                                case '(':
-                                    isError = this.setError('Некорректное выражение')
-                                default:
-                                    arPolishNotation.push(arStack.pop())
-                            }
-                        }
-                    }
+                    this.initialVerification(arStr)
+                    this.getPoshNotationArray(arStr, strLength)
                 }
             }
-            if (arStack.length > 0 || arPolishNotation.length < 1 || isNaN(parseInt(arPolishNotation[0]))) {
-                isError = this.setError('Некорректное выражение')
+            if (this.arStack.length > 0 || this.arPolishNotation.length < 1 || isNaN(parseInt(this.arPolishNotation[0]))) {
+                this.isError = this.setError(this.arErrorsList.incorrectExpression)
             }
-            if (!isError) {
-                document.querySelector('.polish-notation').innerText = arPolishNotation.join('')
-                let arResultStack = []
-                const polishNotationLastIndex = arPolishNotation.length
+        }
+
+        /**
+         * Получение результата
+         */
+        getResultValue() {
+            if (!this.isError) {
+                this.polishNotationElement.innerText = this.arPolishNotation.join('')
+                const polishNotationLastIndex = this.arPolishNotation.length
                 for (let i = 0; i < polishNotationLastIndex; i++) {
-                    const element = arPolishNotation[i];
+                    const element = this.arPolishNotation[i];
                     if (this.arOperators.indexOf(element) === -1) {
-                        arResultStack.push(parseFloat(element))
+                        this.arResultStack.push(parseFloat(element))
                     } else {
-                        const resultStackLastIndex = arResultStack.length - 1
+                        const resultStackLastIndex = this.arResultStack.length - 1
                         if (resultStackLastIndex < 0) {
-                            isError = this.setError('Некорректное выражение. Не возможно получить ответ.')
+                            this.isError = this.setError(this.arErrorsList.notPossibleToGetAnAnswer)
                             break
                         } else if (resultStackLastIndex === 0) {
-                            const item = arResultStack.pop()
-                            let result = 0
-                            switch (element) {
-                                case '+':
-                                    result = + item
-                                    break
-                                case '-':
-                                    result = - item
-                                    break
-                            }
-                            arResultStack.push(result)
+                            this.unaryPlusOrMinus(element)
                         } else {
-                            const secondItem = arResultStack.pop()
-                            const firstItem = arResultStack.pop()
-                            let result = 0
-                            switch (element) {
-                                case '/':
-                                    result = firstItem / secondItem
-                                    break
-                                case '*':
-                                    result = firstItem * secondItem
-                                    break
-                                case '+':
-                                    result = firstItem + secondItem
-                                    break
-                                case '-':
-                                    result = firstItem - secondItem
-                                    break
-                            }
-                            arResultStack.push(result)
+                            this.operationOnSymbolsFromStack(element)
                         }
                     }
                 }
-                if (arResultStack.length !== 1) {
-                    isError = this.setError('Некорректное выражение. Не возможно получить ответ.')
+                if (this.arResultStack.length !== 1) {
+                    this.isError = this.setError(this.arErrorsList.notPossibleToGetAnAnswer)
                 } else {
-                    document.querySelector('.result').innerText = arResultStack[0]
+                    this.resultElement.innerText = this.arResultStack[0]
                 }
             }
         }
 
-        setError() {
+        /**
+         * Певоначальная проверка на ошибки
+         * @param arStr
+         */
+        initialVerification(arStr) {
+            if (arStr[0] === ')' || arStr[0] === '*' || arStr[0] === '/') {
+                this.isError = this.setError(this.arErrorsList.invalidBeginningExpression)
+            }
+            if (arStr.length < 3) {
+                this.isError = this.setError(this.arErrorsList.tooShortExpression)
+            }
+        }
+
+        /**
+         * Действие, если число
+         * @param strItem
+         * @param nextItem
+         */
+        ifIsNumberAction(strItem, nextItem) {
+            this.arPolishNotation.push(strItem)
+            if ((nextItem !== undefined && (nextItem === '-' || nextItem === '+'))) {
+                const lastIndex = this.arStack.lastIndexOf('(')
+                if (this.arStack.length - 1 > lastIndex) {
+                    this.pushSymbols(lastIndex)
+                }
+            }
+        }
+
+        /**
+         * Действие, если открывающая скобка
+         * @param strItem
+         */
+        ifIsOpenBracketAction(strItem) {
+            this.arStack.push(strItem)
+        }
+
+        /**
+         * Действие, если закрывающая скобка
+         * @param lastIndex
+         */
+        ifIsCloseBracketAction(lastIndex) {
+            if (this.arStack.length - 1 > lastIndex) {
+                this.pushSymbols(lastIndex)
+            }
+            this.arStack.pop()
+            lastIndex = this.arStack.lastIndexOf('(')
+            if (this.arStack.length - 1 > lastIndex) {
+                this.pushSymbols(lastIndex)
+            }
+        }
+
+        /**
+         * Дейсвие, если операция
+         * @param strItem
+         */
+        ifIsOperatorAction(strItem) {
+            this.arStack.push(strItem)
+        }
+
+        /**
+         * Действие, если после перебора всей строки в стэке остались скобки
+         */
+        addToStackRemainingOperators() {
+            this.pushSymbols(-1)
+            for (let i = this.arStack.length - 1; i > -1; i--) {
+                switch (this.arStack[i]) {
+                    case '(':
+                        this.isError = this.setError(this.arErrorsList.incorrectExpression)
+                    default:
+                        this.arPolishNotation.push(this.arStack.pop())
+                }
+            }
+        }
+
+        /**
+         * Получениче польской нотации в виде массива
+         * @param arStr
+         * @param strLength
+         */
+        getPoshNotationArray(arStr, strLength) {
+            for (let i = 0; i < strLength; i++) {
+                if (this.isError) break
+                const strItem = arStr[i]
+                const nextItem = (i + 1 < strLength) ? arStr[i + 1] : undefined
+
+                if (!isNaN(parseInt(strItem))) {
+                    this.ifIsNumberAction(strItem, nextItem)
+                    continue
+                }
+                if (strItem === '(') {
+                    this.ifIsOpenBracketAction(strItem)
+                    continue
+                }
+                if (strItem === ')') {
+                    let lastIndex = this.arStack.lastIndexOf('(')
+                    if (lastIndex !== -1) {
+                        this.ifIsCloseBracketAction(lastIndex)
+                        continue
+                    } else {
+                        this.isError = this.setError(this.arErrorsList.incorrectExpression)
+                    }
+                }
+                if (this.arOperators.indexOf(strItem) !== -1) {
+                    this.ifIsOperatorAction(strItem)
+                    continue
+                }
+            }
+            if (this.arStack.length > 0 && !this.isError) {
+                this.addToStackRemainingOperators()
+            }
+        }
+
+        /**
+         * Если ошибка, выводим
+         * @param text
+         * @returns {boolean}
+         */
+        setError(text) {
             alert(text)
             return true;
         }
 
-        pushSymbols(arStack, lastIndex, arPolishNotation) {
-            for (let i = arStack.length - 1; i > lastIndex; i--) {
-                arPolishNotation.push(arStack.pop())
+        /**
+         * Пушим симболы в массив польской нотации
+         * @param lastIndex
+         */
+        pushSymbols(lastIndex) {
+            for (let i = this.arStack.length - 1; i > lastIndex; i--) {
+                this.arPolishNotation.push(this.arStack.pop())
             }
-            return arPolishNotation
         }
     }
-    const calculator = new Calculator()
+
     document.addEventListener('DOMContentLoaded', function() {
+        const calculator = new Calculator('.polish-notation', '.result')
         document.querySelector('[name=math]').addEventListener('input', function(e) {
             const value = e.target.value
             calculator.init(value)
