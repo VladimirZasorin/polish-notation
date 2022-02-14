@@ -18,9 +18,10 @@
     
 (defvar my_expr '())
 (format T "Введите выражение в обратной польской нотации!~%")
-(setf my_expr (from-string-to-list (read-line)))
+(setf my_expr (read-line))
 (format T "Введённое выражение: ")
-(print my_expr)
+(format T my_expr)
+(setf my_expr (from-string-to-list my_expr))
 
 (defvar opetator +)
 (defvar result 0)
@@ -52,8 +53,8 @@
                                 (setf subvalue (division f s))
                                 (setf subvalue (multiplication f s)))))
                     (setf (nth (eval (- n 1)) my_expr) subvalue)
-                    (pop my_expr)
-                    (pop my_expr)
+                    (setf my_expr (del-by-num (eval (- n 2)) my_expr))
+                    (setf my_expr (del-by-num (eval (- n 3)) my_expr))
                     (setf n 1)
                     (print my_expr)
                 )
